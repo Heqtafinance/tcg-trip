@@ -6,9 +6,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="TCG Trip">
-<meta name="theme-color" content="#111827">
-<title>TCG Trip</title>
+<meta name="apple-mobile-web-app-title" content="BlueLine">
+<meta name="theme-color" content="#1D3FD1">
+<title>BlueLine</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
@@ -16,7 +16,7 @@
 </head>
 <body>
 <header class="topbar">
-  <div class="brand">TCG Trip</div>
+  <div class="brand">BlueLine</div>
   <div class="rate" id="rateBadge">¥ —</div>
 </header>
 
@@ -62,8 +62,9 @@
         <label>1er prix CM (€/u)<input type="number" inputmode="decimal" id="sFirst" placeholder="€"></label>
         <label>Dernière vente CM (€/u)<input type="number" inputmode="decimal" id="sLast" placeholder="€"></label>
       </div>
-      <label>Nom (pour ouvrir Cardmarket)<input type="text" id="sName" placeholder="ex : Terastal Festival display"></label>
-      <button class="btn ghost" id="sOpenCM">Ouvrir la recherche Cardmarket ↗</button>
+      <div class="lbl">Jeu</div><div class="chips" id="sGames"></div>
+      <label>Nom ou numéro de carte (pour Cardmarket)<input type="text" id="sName" placeholder="ex : OP05-119 ou Terastal Festival"></label>
+      <button class="btn ghost" id="sOpenCM"><i data-icon="external-link"></i> Ouvrir la recherche Cardmarket</button>
     </div>
 
     <div class="sim-result" id="simLine">
@@ -83,7 +84,7 @@
   <section class="view" id="view-list">
     <div class="list-head">
       <h2>Achats</h2>
-      <button class="btn primary small" id="btnNew">+ Achat</button>
+      <button class="btn primary small" id="btnNew"><i data-icon="plus"></i> Achat</button>
     </div>
     <div id="purchaseList"></div>
   </section>
@@ -122,19 +123,19 @@
         <option>Carte Qonto SAS</option><option>Espèces SAS</option><option>Perso (à rembourser)</option>
       </select></label>
       <label>Lien Cardmarket<input type="url" id="fCM" placeholder="généré automatiquement"></label>
-      <button type="button" class="btn ghost" id="fOpenCM">Ouvrir sur Cardmarket ↗</button>
+      <button type="button" class="btn ghost" id="fOpenCM"><i data-icon="external-link"></i> Ouvrir sur Cardmarket</button>
       <label>Notes<textarea id="fNotes" rows="2" placeholder="état, langue, négociation…"></textarea></label>
 
       <div class="photos">
         <div class="ph-col">
           <div class="ph-h">Ticket</div>
-          <label class="btn ghost small filebtn">📷 Ticket<input type="file" accept="image/*" capture="environment" id="fTicket" hidden></label>
+          <label class="btn ghost small filebtn"><i data-icon="camera"></i> Ticket<input type="file" accept="image/*" capture="environment" id="fTicket" hidden></label>
           <div class="thumbs" id="thumbsTicket"></div>
         </div>
         <div class="ph-col">
           <div class="ph-h">Produit</div>
-          <label class="btn ghost small filebtn">📷 Produit<input type="file" accept="image/*" capture="environment" id="fProduct" hidden></label>
-          <label class="btn ghost small filebtn">🖼 Galerie<input type="file" accept="image/*" multiple id="fProductLib" hidden></label>
+          <label class="btn ghost small filebtn"><i data-icon="camera"></i> Produit<input type="file" accept="image/*" capture="environment" id="fProduct" hidden></label>
+          <label class="btn ghost small filebtn"><i data-icon="image"></i> Galerie<input type="file" accept="image/*" multiple id="fProductLib" hidden></label>
           <div class="thumbs" id="thumbsProduct"></div>
         </div>
       </div>
@@ -163,10 +164,10 @@
   <section class="view" id="view-export">
     <h2>Export &amp; sauvegarde</h2>
     <div class="card">
-      <button class="btn primary" id="xExcel">📊 Exporter le tableau Excel</button>
-      <button class="btn ghost" id="xZip">🗂 Exporter les photos (ZIP)</button>
-      <button class="btn ghost" id="xBackup">💾 Sauvegarde complète (données + photos)</button>
-      <label class="btn ghost filebtn">♻️ Restaurer une sauvegarde<input type="file" accept=".json,application/json" id="xRestore" hidden></label>
+      <button class="btn primary" id="xExcel"><i data-icon="file-spreadsheet"></i> Exporter le tableau Excel</button>
+      <button class="btn ghost" id="xZip"><i data-icon="archive"></i> Exporter les photos (ZIP)</button>
+      <button class="btn ghost" id="xBackup"><i data-icon="save"></i> Sauvegarde complète (données + photos)</button>
+      <label class="btn ghost filebtn"><i data-icon="rotate-ccw"></i> Restaurer une sauvegarde<input type="file" accept=".json,application/json" id="xRestore" hidden></label>
       <p class="fine">Les données restent uniquement sur ce téléphone. Fais une sauvegarde complète chaque soir et envoie-la-toi (mail, WhatsApp, iCloud).</p>
     </div>
 
@@ -203,16 +204,17 @@
 </main>
 
 <nav class="tabbar">
-  <button data-goto="dash" class="active">🚦<span>Tableau</span></button>
-  <button data-goto="sim">🧮<span>Simuler</span></button>
-  <button data-goto="list">🃏<span>Achats</span></button>
-  <button data-goto="customs">🛃<span>Douane</span></button>
-  <button data-goto="export">💾<span>Export</span></button>
+  <button data-goto="dash" class="active"><i data-icon="gauge"></i><span>Tableau</span></button>
+  <button data-goto="sim"><i data-icon="calculator"></i><span>Simuler</span></button>
+  <button data-goto="list"><i data-icon="layers"></i><span>Achats</span></button>
+  <button data-goto="customs"><i data-icon="landmark"></i><span>Douane</span></button>
+  <button data-goto="export"><i data-icon="download"></i><span>Export</span></button>
 </nav>
 
 <div id="toast" class="toast hidden"></div>
 <div id="viewer" class="viewer hidden"><img id="viewerImg" alt=""></div>
 
+<script src="icons.js"></script>
 <script src="vendor/jszip.min.js"></script>
 <script src="vendor/exceljs.min.js" defer></script>
 <script src="app.js"></script>

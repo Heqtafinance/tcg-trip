@@ -1,4 +1,4 @@
-# TCG Trip
+# BlueLine
 
 Web app iPhone (PWA) pour suivre la rentabilité des achats TCG en voyage.
 

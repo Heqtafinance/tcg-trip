@@ -1,18 +1,23 @@
-/* TCG Trip — achats au Japon, rentabilité en direct. Données stockées uniquement sur l'appareil (IndexedDB). */
+/* BlueLine — achats au Japon, rentabilité en direct. Données stockées uniquement sur l'appareil (IndexedDB). */
 'use strict';
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 
 /* ---------- Réglages ---------- */
 const DEFAULTS = {
   budget: 10000, trip: 2500, nego: 5, fees: 5, red: 60, green: 80,
   tax: 10, broker: 150, duty: 2.7, vat: 20, game: 'Pokemon', manualRate: '',
-  returnDate: '', customsRate: '', customsRateInfo: '', lastBackup: 0
+  returnDate: '', customsRate: '', customsRateInfo: '', lastBackup: 0, lastGame: ''
 };
 const GAMES = [
   ['Pokemon', 'Pokémon'], ['OnePiece', 'One Piece'], ['YuGiOh', 'Yu-Gi-Oh!'], ['Magic', 'Magic'],
   ['Lorcana', 'Lorcana'], ['DragonBallSuper', 'Dragon Ball Super'], ['Digimon', 'Digimon'],
-  ['WeissSchwarz', 'Weiß Schwarz'], ['UnionArena', 'Union Arena'], ['FleshAndBlood', 'Flesh and Blood']
+  ['WeissSchwarz', 'Weiß Schwarz'], ['UnionArena', 'Union Arena'], ['FleshAndBlood', 'Flesh and Blood'],
+  ['Autre', 'Autre (recherche web)']
 ];
+const CHIP_GAMES = ['Pokemon', 'OnePiece', 'YuGiOh', 'Magic', 'Lorcana', 'DragonBallSuper', 'Autre'];
+const gameLabel = g => (GAMES.find(x => x[0] === g) || [, g])[1];
+const defGame = () => S.lastGame || S.game;
+let SIM_GAME = null;
 
 let S = { ...DEFAULTS };
 let RATE = { value: null, date: null, source: '' };
@@ -224,16 +229,24 @@ function renderSim() {
     c.cost ? `Budget restant après achat : ${eur(t.left)} · bénéfice projeté ${t.profit == null ? '—' : eur(t.profit)}` : 'Panier actuel');
 }
 ['sYen', 'sQty', 'sTaxFree', 'sFirst', 'sLast'].forEach(id => $(id).addEventListener('input', renderSim));
-$('sOpenCM').addEventListener('click', () => openCM(cmUrl($('sName').value, S.game)));
+$('sOpenCM').addEventListener('click', () => openCM(cmUrl($('sName').value, SIM_GAME || defGame())));
+function renderSimGames() {
+  const g = SIM_GAME || defGame();
+  const list = CHIP_GAMES.includes(g) ? CHIP_GAMES : [g, ...CHIP_GAMES];
+  $('sGames').innerHTML = list.map(k => `<button type="button" class="chip${k === g ? ' on' : ''}" data-game="${k}">${esc(gameLabel(k))}</button>`).join('');
+}
+$('sGames').addEventListener('click', e => { const b = e.target.closest('[data-game]'); if (!b) return; SIM_GAME = b.dataset.game; renderSimGames(); });
 $('sSave').addEventListener('click', () => openForm(null, {
-  name: $('sName').value, priceYen: $('sYen').value, qty: $('sQty').value, taxFree: $('sTaxFree').checked,
+  name: $('sName').value, game: SIM_GAME || defGame(), priceYen: $('sYen').value, qty: $('sQty').value, taxFree: $('sTaxFree').checked,
   cmFirst: $('sFirst').value, cmLast: $('sLast').value
 }));
 
 /* ---------- Cardmarket ---------- */
 function cmUrl(name, game) {
-  if (!name || !name.trim()) return `https://www.cardmarket.com/fr/${game || S.game}`;
-  return `https://www.cardmarket.com/fr/${game || S.game}/Products/Search?searchString=${encodeURIComponent(name.trim())}`;
+  const g = game || defGame(); const q = (name || '').trim();
+  if (g === 'Autre') return `https://www.google.com/search?q=${encodeURIComponent('cardmarket ' + q)}`;
+  if (!q) return `https://www.cardmarket.com/fr/${g}`;
+  return `https://www.cardmarket.com/fr/${g}/Products/Search?searchString=${encodeURIComponent(q)}`;
 }
 function openCM(url) { window.open(url, '_blank', 'noopener'); }
 
@@ -273,14 +286,14 @@ function nextId() {
   const max = PURCHASES.reduce((m, p) => Math.max(m, parseInt(String(p.id).slice(1)) || 0), 0);
   return 'A' + String(max + 1).padStart(3, '0');
 }
-function fillGames(sel, value) { sel.innerHTML = GAMES.map(([v, l]) => `<option value="${v}">${l}</option>`).join(''); sel.value = value || S.game; }
+function fillGames(sel, value) { sel.innerHTML = GAMES.map(([v, l]) => `<option value="${v}">${l}</option>`).join(''); sel.value = value || defGame(); }
 async function openForm(p, prefill) {
   const isNew = !p; const d = p || {};
   const pre = prefill || {};
   $('formTitle').textContent = isNew ? 'Nouvel achat' : `Achat ${d.id}`;
   $('fId').value = d.id || '';
   $('fName').value = d.name ?? pre.name ?? '';
-  fillGames($('fGame'), d.game);
+  fillGames($('fGame'), d.game || pre.game || defGame());
   $('fCat').value = d.cat || 'Scellé';
   $('fShop').value = d.shop || '';
   $('fDate').value = d.date || todayISO();
@@ -315,7 +328,7 @@ function updateFormCalc() {
 }
 function syncCM() { if ($('fCM').dataset.auto === '1') $('fCM').value = cmUrl($('fName').value, $('fGame').value); }
 ['fYen', 'fQty', 'fTaxFree', 'fRate', 'fFirst', 'fLast', 'fManual'].forEach(id => $(id).addEventListener('input', updateFormCalc));
-['fName', 'fGame'].forEach(id => $(id).addEventListener('input', syncCM));
+['fName', 'fGame'].forEach(id => { $(id).addEventListener('input', syncCM); $(id).addEventListener('change', syncCM); });
 $('fCM').addEventListener('input', () => { $('fCM').dataset.auto = '0'; });
 $('fOpenCM').addEventListener('click', () => openCM($('fCM').value || cmUrl($('fName').value, $('fGame').value)));
 $('fCancel').addEventListener('click', () => go('list'));
@@ -335,6 +348,7 @@ $('pForm').addEventListener('submit', async e => {
   const isNew = !$('fId').value;
   p.updatedAt = Date.now(); if (isNew) p.createdAt = Date.now();
   await dbPut('purchases', p);
+  if (p.game && p.game !== S.lastGame) { S.lastGame = p.game; SIM_GAME = null; await saveSettings(); renderSimGames(); }
   for (const id of EDIT_DELETED) await dbDel('photos', id);
   let i = 0;
   for (const ph of EDIT_PHOTOS) {
@@ -433,14 +447,14 @@ const LABEL = { red: 'ROUGE', orange: 'ORANGE', green: 'VERT', none: '—' };
 async function waitExcel() { for (let i = 0; i < 50 && !window.ExcelJS; i++) await new Promise(r => setTimeout(r, 100)); if (!window.ExcelJS) throw new Error('ExcelJS absent'); }
 async function buildExcel() {
   await waitExcel();
-  const wb = new ExcelJS.Workbook(); wb.creator = 'TCG Trip'; wb.created = new Date();
+  const wb = new ExcelJS.Workbook(); wb.creator = 'BlueLine'; wb.created = new Date();
   const t = totals(); const cu = customsData();
   const head = { font: { bold: true, color: { argb: 'FFFFFFFF' } }, fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF111827' } }, alignment: { vertical: 'middle', wrapText: true } };
 
   // Synthèse
   const s = wb.addWorksheet('Synthèse');
   s.columns = [{ width: 38 }, { width: 22 }];
-  s.addRow(['TCG Trip — synthèse du voyage']).font = { bold: true, size: 16 };
+  s.addRow(['BlueLine — synthèse du voyage']).font = { bold: true, size: 16 };
   s.addRow([`Export du ${new Date().toLocaleString('fr-FR')}`]);
   s.addRow([]);
   const st = s.addRow(['RENTABILITÉ DU PANIER', t.pct == null ? '—' : `${pctTxt(t.pct)} — ${LABEL[t.color]}`]);
@@ -470,7 +484,7 @@ async function buildExcel() {
   for (const p of sorted) {
     const c = calcLine(p);
     const row = a.getRow(r);
-    row.values = [p.id, p.date || '', p.shop || '', p.name || '', (GAMES.find(g => g[0] === p.game) || [, p.game])[1], p.cat || '', c.qty,
+    row.values = [p.id, p.date || '', p.shop || '', p.name || '', gameLabel(p.game), p.cat || '', c.qty,
       Math.round(c.priceYen), p.taxFree ? 'Oui' : 'Non', Math.round(c.refundYen), Math.round(c.netYen), c.rate ? +c.rate.toFixed(2) : '',
       c.cost != null ? +c.cost.toFixed(2) : '', p.cmFirst ?? '', p.cmLast ?? '', c.est != null ? +c.est.toFixed(2) : '',
       c.pct != null ? +(c.pct / 100).toFixed(4) : '', LABEL[c.color], p.pay || '', p.cmUrl ? { text: 'Ouvrir', hyperlink: p.cmUrl } : '', p.notes || '', ''];
@@ -520,7 +534,7 @@ async function deliver(blob, filename) {
 }
 const stamp = () => todayISO();
 $('xExcel').addEventListener('click', async () => {
-  try { toast('Préparation de l\'Excel…'); const buf = await buildExcel(); await deliver(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `tcg-trip_${stamp()}.xlsx`); }
+  try { toast('Préparation de l\'Excel…'); const buf = await buildExcel(); await deliver(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), `blueline_${stamp()}.xlsx`); }
   catch (e) { console.error(e); toast('Erreur export Excel'); }
 });
 async function buildZip() {
@@ -533,7 +547,7 @@ async function buildZip() {
   return zip.generateAsync({ type: 'blob' });
 }
 $('xZip').addEventListener('click', async () => {
-  try { toast('Préparation du ZIP…'); const b = await buildZip(); await deliver(new Blob([b], { type: 'application/zip' }), `tcg-trip_photos_${stamp()}.zip`); }
+  try { toast('Préparation du ZIP…'); const b = await buildZip(); await deliver(new Blob([b], { type: 'application/zip' }), `blueline_photos_${stamp()}.zip`); }
   catch (e) { console.error(e); toast('Erreur export photos'); }
 });
 
@@ -545,12 +559,12 @@ async function buildBackup() {
   const ph = [];
   for (const p of photos) ph.push({ ...p, blob: await blobToDataURL(p.blob) });
   const { lastBackup, ...settings } = S;
-  return new Blob([JSON.stringify({ app: 'tcg-trip', version: APP_VERSION, exportedAt: new Date().toISOString(), settings, purchases: PURCHASES, photos: ph })], { type: 'application/json' });
+  return new Blob([JSON.stringify({ app: 'blueline', version: APP_VERSION, exportedAt: new Date().toISOString(), settings, purchases: PURCHASES, photos: ph })], { type: 'application/json' });
 }
 $('xBackup').addEventListener('click', async () => {
   try {
     toast('Préparation de la sauvegarde…');
-    const ok = await deliver(await buildBackup(), `tcg-trip_sauvegarde_${stamp()}.json`);
+    const ok = await deliver(await buildBackup(), `blueline_sauvegarde_${stamp()}.json`);
     if (ok) { S.lastBackup = Date.now(); await saveSettings(); renderDash(); toast('Sauvegarde exportée'); }
   } catch (e) { console.error(e); toast('Erreur sauvegarde'); }
 });
@@ -558,7 +572,7 @@ $('xRestore').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
   try {
     const j = JSON.parse(await f.text());
-    if (j.app !== 'tcg-trip') throw new Error('format');
+    if (j.app !== 'blueline' && j.app !== 'tcg-trip') throw new Error('format');
     if (!confirm(`Restaurer ${j.purchases.length} achats et ${j.photos.length} photos ? Les données actuelles seront remplacées.`)) return;
     const d = await db();
     await new Promise((res, rej) => { const t = d.transaction(['purchases', 'photos'], 'readwrite'); t.objectStore('purchases').clear(); t.objectStore('photos').clear(); t.oncomplete = res; t.onerror = rej; });
@@ -574,7 +588,7 @@ const SET_MAP = { stBudget: 'budget', stTrip: 'trip', stNego: 'nego', stFees: 'f
 function renderSettings() {
   fillGames($('stGame'), S.game);
   for (const [id, k] of Object.entries(SET_MAP)) $(id).value = S[k] ?? '';
-  $('versionTxt').textContent = `TCG Trip v${APP_VERSION} · données stockées sur cet appareil uniquement`;
+  $('versionTxt').textContent = `BlueLine v${APP_VERSION} · données stockées sur cet appareil uniquement`;
 }
 async function saveSettings() { await dbPut('kv', S, 'settings'); }
 $('setForm').addEventListener('submit', async e => {
@@ -593,9 +607,13 @@ async function loadAll() {
   const saved = await dbGet('kv', 'settings');
   S = { ...DEFAULTS, ...(saved || {}) };
   PURCHASES = await dbGetAll('purchases');
-  renderSettings(); renderRateBadge(); renderAll();
+  renderSettings(); renderSimGames(); renderRateBadge(); renderAll();
+}
+function mountIcons(root = document) {
+  root.querySelectorAll('i[data-icon]').forEach(i => { const svg = (window.ICONS || {})[i.dataset.icon]; if (svg) i.outerHTML = svg; });
 }
 (async function init() {
+  mountIcons();
   try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) { }
   await loadAll();
   refreshRate();

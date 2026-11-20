@@ -1,6 +1,6 @@
 /* Cache hors ligne de l'app (le code seulement, jamais les données). */
-const CACHE = 'tcg-trip-v1.0.0';
-const ASSETS = ['./', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest',
+const CACHE = 'blueline-v1.1.0';
+const ASSETS = ['./', 'index.html', 'style.css', 'app.js', 'icons.js', 'manifest.webmanifest',
   'vendor/exceljs.min.js', 'vendor/jszip.min.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())); });
