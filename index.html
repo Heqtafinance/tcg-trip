@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TCG Trip">
+<meta name="theme-color" content="#111827">
+<title>TCG Trip</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">TCG Trip</div>
+  <div class="rate" id="rateBadge">¥ —</div>
+</header>
+
+<main id="app">
+
+  <!-- TABLEAU DE BORD -->
+  <section class="view active" id="view-dash">
+    <div id="backupBanner" class="banner warn hidden">
+      Pense à sauvegarder (dernière sauvegarde : <span id="lastBackupTxt">jamais</span>).
+      <button class="link" data-goto="export">Sauvegarder</button>
+    </div>
+    <div id="installBanner" class="banner info hidden">
+      Pour l'installer : bouton Partager de Safari → « Sur l'écran d'accueil ».
+    </div>
+
+    <div class="status-card" id="statusCard">
+      <div class="status-label">Rentabilité du panier</div>
+      <div class="status-pct" id="statusPct">—</div>
+      <div class="status-sub" id="statusSub">Aucun achat pour l'instant</div>
+    </div>
+
+    <div class="grid2">
+      <div class="kpi"><div class="kpi-l">Total dépensé</div><div class="kpi-v" id="kSpent">0 €</div><div class="kpi-s" id="kSpentY">0 ¥</div></div>
+      <div class="kpi"><div class="kpi-l">Total estimé (revente)</div><div class="kpi-v" id="kEst">0 €</div><div class="kpi-s" id="kCount">0 achat</div></div>
+      <div class="kpi"><div class="kpi-l">Budget restant</div><div class="kpi-v" id="kLeft">—</div><div class="kpi-s" id="kLeftY">—</div></div>
+      <div class="kpi"><div class="kpi-l">Bénéfice projeté*</div><div class="kpi-v" id="kProfit">—</div><div class="kpi-s">après voyage, douane, frais</div></div>
+    </div>
+    <p class="fine">* Projection : ventes estimées − frais de plateforme − (achats + droits + TVA d'import) − transitaire − voyage. Seuils : rouge &lt; <span class="tRed">60</span> %, orange <span class="tRed">60</span>–<span class="tGreen">80</span> %, vert ≥ <span class="tGreen">80</span> %.</p>
+
+    <div class="mix" id="mixBox"></div>
+  </section>
+
+  <!-- SIMULATEUR -->
+  <section class="view" id="view-sim">
+    <h2>Je l'achète ?</h2>
+    <div class="card">
+      <label>Prix en boutique (¥, quantité totale)<input type="number" inputmode="decimal" id="sYen" placeholder="ex : 18000"></label>
+      <div class="row">
+        <label>Quantité<input type="number" inputmode="numeric" id="sQty" value="1" min="1"></label>
+        <label class="check"><input type="checkbox" id="sTaxFree"> Tax-free (remboursé)</label>
+      </div>
+      <div class="row">
+        <label>1er prix CM (€/u)<input type="number" inputmode="decimal" id="sFirst" placeholder="€"></label>
+        <label>Dernière vente CM (€/u)<input type="number" inputmode="decimal" id="sLast" placeholder="€"></label>
+      </div>
+      <label>Nom (pour ouvrir Cardmarket)<input type="text" id="sName" placeholder="ex : Terastal Festival display"></label>
+      <button class="btn ghost" id="sOpenCM">Ouvrir la recherche Cardmarket ↗</button>
+    </div>
+
+    <div class="sim-result" id="simLine">
+      <div class="sr-title">Cet article</div>
+      <div class="sr-pct" id="simPct">—</div>
+      <div class="sr-sub" id="simSub">Saisis un prix et un prix Cardmarket</div>
+    </div>
+    <div class="sim-result" id="simCart">
+      <div class="sr-title">Panier si tu l'achètes</div>
+      <div class="sr-pct" id="simCartPct">—</div>
+      <div class="sr-sub" id="simCartSub"></div>
+    </div>
+    <button class="btn primary" id="sSave">Enregistrer cet achat →</button>
+  </section>
+
+  <!-- ACHATS -->
+  <section class="view" id="view-list">
+    <div class="list-head">
+      <h2>Achats</h2>
+      <button class="btn primary small" id="btnNew">+ Achat</button>
+    </div>
+    <div id="purchaseList"></div>
+  </section>
+
+  <!-- FORMULAIRE -->
+  <section class="view" id="view-form">
+    <h2 id="formTitle">Nouvel achat</h2>
+    <form id="pForm" class="card" autocomplete="off">
+      <input type="hidden" id="fId">
+      <label>Article<input type="text" id="fName" required placeholder="ex : Display Terastal Festival JP"></label>
+      <div class="row">
+        <label>Jeu<select id="fGame"></select></label>
+        <label>Catégorie<select id="fCat">
+          <option>Scellé</option><option>Carte à l'unité</option><option>Lot</option><option>Gradée</option><option>Autre</option>
+        </select></label>
+      </div>
+      <div class="row">
+        <label>Boutique<input type="text" id="fShop" placeholder="ex : Card Rush Akihabara"></label>
+        <label>Date<input type="date" id="fDate"></label>
+      </div>
+      <div class="row">
+        <label>Prix payé (¥ TTC, total)<input type="number" inputmode="decimal" id="fYen" required></label>
+        <label>Quantité<input type="number" inputmode="numeric" id="fQty" value="1" min="1"></label>
+      </div>
+      <div class="row">
+        <label class="check"><input type="checkbox" id="fTaxFree"> Tax-free (remboursé au départ)</label>
+        <label>Taux ¥/€ de l'achat<input type="number" inputmode="decimal" id="fRate" step="0.01"></label>
+      </div>
+      <div class="row">
+        <label>1er prix CM (€/u)<input type="number" inputmode="decimal" id="fFirst"></label>
+        <label>Dernière vente CM (€/u)<input type="number" inputmode="decimal" id="fLast"></label>
+      </div>
+      <label>Estimation manuelle (€/u, optionnel — remplace le calcul)<input type="number" inputmode="decimal" id="fManual"></label>
+      <div class="calc" id="fCalc">—</div>
+      <label>Paiement<select id="fPay">
+        <option>Carte Qonto SAS</option><option>Espèces SAS</option><option>Perso (à rembourser)</option>
+      </select></label>
+      <label>Lien Cardmarket<input type="url" id="fCM" placeholder="généré automatiquement"></label>
+      <button type="button" class="btn ghost" id="fOpenCM">Ouvrir sur Cardmarket ↗</button>
+      <label>Notes<textarea id="fNotes" rows="2" placeholder="état, langue, négociation…"></textarea></label>
+
+      <div class="photos">
+        <div class="ph-col">
+          <div class="ph-h">Ticket</div>
+          <label class="btn ghost small filebtn">📷 Ticket<input type="file" accept="image/*" capture="environment" id="fTicket" hidden></label>
+          <div class="thumbs" id="thumbsTicket"></div>
+        </div>
+        <div class="ph-col">
+          <div class="ph-h">Produit</div>
+          <label class="btn ghost small filebtn">📷 Produit<input type="file" accept="image/*" capture="environment" id="fProduct" hidden></label>
+          <label class="btn ghost small filebtn">🖼 Galerie<input type="file" accept="image/*" multiple id="fProductLib" hidden></label>
+          <div class="thumbs" id="thumbsProduct"></div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn primary">Enregistrer</button>
+        <button type="button" class="btn ghost" id="fCancel">Annuler</button>
+        <button type="button" class="btn danger hidden" id="fDelete">Supprimer</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- DOUANE -->
+  <section class="view" id="view-customs">
+    <h2>Récap douane</h2>
+    <div class="card">
+      <label>Date de retour en France<input type="date" id="cReturn"></label>
+      <label>Taux douanier ¥ pour 1 € <span class="fine" id="cRateInfo"></span><input type="number" inputmode="decimal" step="0.01" id="cRate"></label>
+      <button class="btn ghost small" id="cFetch">Récupérer le taux douanier</button>
+    </div>
+    <table class="tbl" id="customsTbl"></table>
+    <p class="fine">Au-delà de 1 000 € de marchandises commerciales : déclaration écrite (transitaire) + numéro EORI de la SAS. Circuit rouge, jamais « rien à déclarer ». Montants indicatifs : le transitaire fait foi.</p>
+  </section>
+
+  <!-- EXPORT / REGLAGES -->
+  <section class="view" id="view-export">
+    <h2>Export &amp; sauvegarde</h2>
+    <div class="card">
+      <button class="btn primary" id="xExcel">📊 Exporter le tableau Excel</button>
+      <button class="btn ghost" id="xZip">🗂 Exporter les photos (ZIP)</button>
+      <button class="btn ghost" id="xBackup">💾 Sauvegarde complète (données + photos)</button>
+      <label class="btn ghost filebtn">♻️ Restaurer une sauvegarde<input type="file" accept=".json,application/json" id="xRestore" hidden></label>
+      <p class="fine">Les données restent uniquement sur ce téléphone. Fais une sauvegarde complète chaque soir et envoie-la-toi (mail, WhatsApp, iCloud).</p>
+    </div>
+
+    <h2>Réglages</h2>
+    <form class="card" id="setForm">
+      <div class="row">
+        <label>Budget achats (€)<input type="number" inputmode="decimal" id="stBudget"></label>
+        <label>Coût du voyage (€)<input type="number" inputmode="decimal" id="stTrip"></label>
+      </div>
+      <div class="row">
+        <label>Marge de négo (%)<input type="number" inputmode="decimal" id="stNego"></label>
+        <label>Frais de vente (%)<input type="number" inputmode="decimal" id="stFees"></label>
+      </div>
+      <div class="row">
+        <label>Seuil rouge &lt; (%)<input type="number" inputmode="decimal" id="stRed"></label>
+        <label>Seuil vert ≥ (%)<input type="number" inputmode="decimal" id="stGreen"></label>
+      </div>
+      <div class="row">
+        <label>Taxe JP remboursée (%)<input type="number" inputmode="decimal" id="stTax"></label>
+        <label>Transitaire (€)<input type="number" inputmode="decimal" id="stBroker"></label>
+      </div>
+      <div class="row">
+        <label>Droits de douane (%)<input type="number" inputmode="decimal" id="stDuty" step="0.1"></label>
+        <label>TVA import (%)<input type="number" inputmode="decimal" id="stVat"></label>
+      </div>
+      <div class="row">
+        <label>Jeu par défaut<select id="stGame"></select></label>
+        <label>Taux ¥ manuel (vide = auto)<input type="number" inputmode="decimal" id="stManualRate" step="0.01"></label>
+      </div>
+      <button class="btn primary" type="submit">Enregistrer les réglages</button>
+    </form>
+    <p class="fine center" id="versionTxt"></p>
+  </section>
+</main>
+
+<nav class="tabbar">
+  <button data-goto="dash" class="active">🚦<span>Tableau</span></button>
+  <button data-goto="sim">🧮<span>Simuler</span></button>
+  <button data-goto="list">🃏<span>Achats</span></button>
+  <button data-goto="customs">🛃<span>Douane</span></button>
+  <button data-goto="export">💾<span>Export</span></button>
+</nav>
+
+<div id="toast" class="toast hidden"></div>
+<div id="viewer" class="viewer hidden"><img id="viewerImg" alt=""></div>
+
+<script src="vendor/jszip.min.js"></script>
+<script src="vendor/exceljs.min.js" defer></script>
+<script src="app.js"></script>
+</body>
+</html>
